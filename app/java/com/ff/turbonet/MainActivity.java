@@ -5,20 +5,15 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.net.wifi.WifiManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.method.ScrollingMovementMethod;
 import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -26,7 +21,7 @@ import java.util.concurrent.Executors;
 
 /**
  * FF TurboNet — تطبيق تحسين الشبكة القانوني لفري فاير.
- * بدون مكتبات خارجية — كل شيء Java + Android SDK قياسي.
+ * بدون مكتبات خارجية — بدون لامدات (توافق كامل مع كل الأجهزة).
  */
 public class MainActivity extends Activity {
 
@@ -41,21 +36,37 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        tvResults = findViewById(R.id.tvResults);
-        tvStatus  = findViewById(R.id.tvStatus);
-        tvResults.setMovementMethod(new ScrollingMovementMethod());
+        try {
+            setContentView(R.layout.activity_main);
+            tvResults = findViewById(R.id.tvResults);
+            tvStatus  = findViewById(R.id.tvStatus);
+            tvResults.setMovementMethod(new ScrollingMovementMethod());
+        } catch (Throwable t) {
+            // حتى لو فشل شيء في الواجهة — لا ننهار: نعرض النص الخام
+            android.util.Log.e("TurboNet", "UI init failed", t);
+            TextView fallback = new TextView(this);
+            fallback.setText("خطأ في الواجهة: " + t);
+            setContentView(fallback);
+            return;
+        }
 
         // فحص الروت في الخلفية
-        worker.execute(() -> {
-            rootAvailable = RootCore.hasRoot();
-            ui.post(() -> tvStatus.setText(rootAvailable
-                    ? "🔓 روت مكتشف — التحسينات العميقة متاحة"
-                    : "📱 بدون روت — الفحص والمراقبة والنصائح تعمل (التحسينات العميقة تحتاج روت أو موديول Magisk المرفق)"));
+        worker.execute(new Runnable() {
+            @Override
+            public void run() {
+                rootAvailable = RootCore.hasRoot();
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tvStatus.setText(rootAvailable
+                                ? "🔓 روت مكتشف — التحسينات العميقة متاحة"
+                                : "📱 بدون روت — الفحص والمراقبة والنصائح تعمل (التحسينات العميقة تحتاج روت أو موديول Magisk المرفق)");
+                    }
+                });
+            }
         });
 
-        appendResult("مرحبًا! 👋\n\nFF TurboNet جاهز.\n" +
+        appendResult("مرحبًا! 👋\n\nFF TurboNet v1.1 جاهز.\n" +
                 "• 📡 فحص البينق: يقيس زمن الوصول لكل سيرفرات فري فاير الحقيقية\n" +
                 "• 🌐 اختبار DNS: يجد أسرع DNS ويقترح الأفضل\n" +
                 "• 🚀 تحسينات TCP: تعديلات نظام الشبكة (تتطلب روت)\n" +
@@ -68,92 +79,154 @@ public class MainActivity extends Activity {
 
     public void onPing(View v) {
         startTask("📡 جارٍ فحص سيرفرات فري فاير (14 سيرفرًا بالتوازي)…\nقد يستغرق حتى 30 ثانية…");
-        worker.execute(() -> {
-            List<NetCore.PingResult> results = NetCore.pingAll();
-            StringBuilder sb = new StringBuilder();
-            sb.append("══════════════════════════\n");
-            sb.append("📡 نتائج فحص سيرفرات فري فاير\n");
-            sb.append("══════════════════════════\n\n");
-            int rank = 1;
-            for (NetCore.PingResult r : results) {
-                if (r.avg < 0) {
-                    sb.append(String.format(Locale.US, "🔴 %s\n    %s — تعذّر الوصول\n\n", r.name, r.host));
-                } else {
-                    sb.append(String.format(Locale.US,
-                            "%s #%d %s\n    %s\n    متوسط %5.1f ms | أدنى %5.1f | أقصى %5.1f | جيتر %4.1f | فقد %d%%\n    التقييم: %s\n\n",
-                            r.colorTag(), rank, r.name, r.host,
-                            r.avg, r.min, r.max, r.jitter, r.loss, r.quality()));
-                    rank++;
+        worker.execute(new Runnable() {
+            @Override
+            public void run() {
+                List<NetCore.PingResult> results;
+                try {
+                    results = NetCore.pingAll();
+                } catch (Throwable t) {
+                    results = null;
+                    lastErr = t;
                 }
+                final List<NetCore.PingResult> res = results;
+                final StringBuilder sb = new StringBuilder();
+                if (res == null) {
+                    sb.append("⛔ حدث خطأ غير متوقع أثناء الفحص:\n")
+                      .append(lastErr == null ? "غير معروف" : android.util.Log.getStackTraceString(lastErr));
+                } else {
+                    sb.append("══════════════════════════\n");
+                    sb.append("📡 نتائج فحص سيرفرات فري فاير\n");
+                    sb.append("══════════════════════════\n\n");
+                    int rank = 1;
+                    for (int i = 0; i < res.size(); i++) {
+                        NetCore.PingResult r = res.get(i);
+                        if (r.avg < 0) {
+                            sb.append(String.format(Locale.US, "🔴 %s\n    %s — تعذّر الوصول\n\n", r.name, r.host));
+                        } else {
+                            sb.append(String.format(Locale.US,
+                                    "%s #%d %s\n    %s\n    متوسط %5.1f ms | أدنى %5.1f | أقصى %5.1f | جيتر %4.1f | فقد %d%%\n    التقييم: %s\n\n",
+                                    r.colorTag(), rank, r.name, r.host,
+                                    r.avg, r.min, r.max, r.jitter, r.loss, r.quality()));
+                            rank++;
+                        }
+                    }
+                    NetCore.PingResult best = res.isEmpty() ? null : res.get(0);
+                    if (best != null && best.avg > 0) {
+                        sb.append("🏆 الأسرع لك: ").append(best.name)
+                          .append(String.format(Locale.US, " (%.1f ms)", best.avg)).append("\n");
+                        sb.append("💡 منطقة ").append(region(best.host)).append(" هي الأفضل لجهازك.\n");
+                        if (best.avg < 60) sb.append("🟢 بينق ممتاز — جاهز للعب!\n");
+                        else if (best.avg < 100) sb.append("🟡 بينق جيد.\n");
+                        else sb.append("🟠 جرّب تغيير DNS من زر DNS، وتأكد من قوة الواي فاي.\n");
+                    }
+                }
+                lastReport = sb.toString();
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tvResults.setText(lastReport);
+                        tvResults.scrollTo(0, 0);
+                    }
+                });
             }
-            NetCore.PingResult best = results.isEmpty() ? null : results.get(0);
-            if (best != null && best.avg > 0) {
-                sb.append("🏆 الأسرع لك: ").append(best.name)
-                  .append(String.format(Locale.US, " (%.1f ms)", best.avg)).append("\n");
-                sb.append("💡 منطقة ").append(region(best.host)).append(" هي الأفضل لجهازك.\n");
-                if (best.avg < 60) sb.append("🟢 بينق ممتاز — جاهز للعب!\n");
-                else if (best.avg < 100) sb.append("🟡 بينق جيد.\n");
-                else sb.append("🟠 جرّب تغيير DNS من زر DNS، وتأكد من قوة الواي فاي.\n");
-            }
-            lastReport = sb.toString();
-            ui.post(() -> { tvResults.setText(lastReport); tvResults.scrollTo(0, 0); });
         });
     }
 
     public void onDns(View v) {
         startTask("🌐 جارٍ اختبار 6 خوادم DNS…");
-        worker.execute(() -> {
-            List<NetCore.DnsResult> results = NetCore.dnsAll();
-            StringBuilder sb = new StringBuilder();
-            sb.append("══════════════════════════\n");
-            sb.append("🌐 نتائج اختبار DNS\n");
-            sb.append("══════════════════════════\n\n");
-            for (NetCore.DnsResult r : results) {
-                if (r.resolved) {
-                    sb.append(String.format(Locale.US, "🟢 %-12s (%s)\n    زمن الاستجابة: %5.1f ms\n\n",
-                            r.name, r.ip, r.ms));
-                } else {
-                    sb.append(String.format(Locale.US, "🔴 %-12s (%s)\n    لا يستجيب\n\n", r.name, r.ip));
+        worker.execute(new Runnable() {
+            @Override
+            public void run() {
+                List<NetCore.DnsResult> results;
+                try {
+                    results = NetCore.dnsAll();
+                } catch (Throwable t) {
+                    results = null;
                 }
+                final List<NetCore.DnsResult> res = results;
+                final StringBuilder sb = new StringBuilder();
+                if (res == null) {
+                    sb.append("⛔ خطأ في اختبار DNS — جرّب مجددًا.\n");
+                } else {
+                    sb.append("══════════════════════════\n");
+                    sb.append("🌐 نتائج اختبار DNS\n");
+                    sb.append("══════════════════════════\n\n");
+                    for (int i = 0; i < res.size(); i++) {
+                        NetCore.DnsResult r = res.get(i);
+                        if (r.resolved) {
+                            sb.append(String.format(Locale.US, "🟢 %-12s (%s)\n    زمن الاستجابة: %5.1f ms\n\n",
+                                    r.name, r.ip, r.ms));
+                        } else {
+                            sb.append(String.format(Locale.US, "🔴 %-12s (%s)\n    لا يستجيب\n\n", r.name, r.ip));
+                        }
+                    }
+                    NetCore.DnsResult fastest = res.isEmpty() ? null : res.get(0);
+                    if (fastest != null && fastest.resolved) {
+                        sb.append("🏆 أسرع DNS: ").append(fastest.name)
+                          .append(" (").append(fastest.ip).append(")\n\n");
+                        sb.append("💡 لتغيير DNS على جهازك (بدون روت):\n");
+                        sb.append("   الإعدادات ← الشبكة ← Wi-Fi ← اضغط مطولًا على شبكتك\n");
+                        sb.append("   ← تعديل ← خيارات متقدمة ← IP: ثابت\n");
+                        sb.append("   ← DNS 1: ").append(fastest.ip).append("\n");
+                        sb.append("   ← DNS 2: 1.0.0.1\n\n");
+                    }
+                }
+                lastReport = sb.toString();
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tvResults.setText(lastReport);
+                        tvResults.scrollTo(0, 0);
+                    }
+                });
             }
-            NetCore.DnsResult fastest = results.isEmpty() ? null : results.get(0);
-            if (fastest != null && fastest.resolved) {
-                sb.append("🏆 أسرع DNS: ").append(fastest.name)
-                  .append(" (").append(fastest.ip).append(")\n\n");
-                sb.append("💡 لتغيير DNS على جهازك (بدون روت):\n");
-                sb.append("   الإعدادات ← الشبكة ← Wi-Fi ← اضغط مطولًا على شبكتك\n");
-                sb.append("   ← تعديل ← خيارات متقدمة ← IP: ثابت\n");
-                sb.append("   ← DNS 1: ").append(fastest.ip).append("\n");
-                sb.append("   ← DNS 2: 1.0.0.1\n\n");
-            }
-            lastReport = sb.toString();
-            ui.post(() -> { tvResults.setText(lastReport); tvResults.scrollTo(0, 0); });
         });
     }
 
     public void onTune(View v) {
-        if (!rootAvailable) {
-            showNoRootInfo();
-            return;
-        }
+        if (!rootAvailable) { showNoRootInfo(); return; }
         startTask("🚀 جارٍ تطبيق تحسينات TCP…");
-        worker.execute(() -> {
-            List<String> log = RootCore.applyTuning();
-            lastReport = String.join("\n", log);
-            ui.post(() -> { tvResults.setText(lastReport); toast("تم تطبيق التحسينات ✅"); });
+        worker.execute(new Runnable() {
+            @Override
+            public void run() {
+                List<String> log;
+                try { log = RootCore.applyTuning(); }
+                catch (Throwable t) { log = null; }
+                if (log == null) { log = new ArrayList<String>(); log.add("⛔ خطأ — تأكد من منح صلاحية su للتطبيق."); }
+                final List<String> logF = log;
+                lastReport = joinLines(logF);
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tvResults.setText(lastReport);
+                        toast("تم تطبيق التحسينات ✅");
+                    }
+                });
+            }
         });
     }
 
     public void onGame(View v) {
-        if (!rootAvailable) {
-            showNoRootInfo();
-            return;
-        }
+        if (!rootAvailable) { showNoRootInfo(); return; }
         startTask("🎮 جارٍ تفعيل وضع اللعب…");
-        worker.execute(() -> {
-            List<String> log = RootCore.gameMode();
-            lastReport = String.join("\n", log);
-            ui.post(() -> { tvResults.setText(lastReport); toast("وضع اللعب مفعّل 🎮"); });
+        worker.execute(new Runnable() {
+            @Override
+            public void run() {
+                List<String> log;
+                try { log = RootCore.gameMode(); }
+                catch (Throwable t) { log = null; }
+                if (log == null) { log = new ArrayList<String>(); log.add("⛔ خطأ — تأكد من منح صلاحية su للتطبيق."); }
+                final List<String> logF = log;
+                lastReport = joinLines(logF);
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tvResults.setText(lastReport);
+                        toast("وضع اللعب مفعّل 🎮");
+                    }
+                });
+            }
         });
     }
 
@@ -161,81 +234,138 @@ public class MainActivity extends Activity {
         if (monitoring) {
             monitoring = false;
             if (monitorThread != null) monitorThread.interrupt();
-            tvStatus.setText(monitoring ? "" : "⏸️ المراقبة متوقفة");
-            appendResult("⏸️ تم إيقاف المراقبة.");
+            tvStatus.setText("⏸️ المراقبة متوقفة");
+            appendResult("\n⏸️ تم إيقاف المراقبة.");
             return;
         }
         monitoring = true;
         tvStatus.setText("📊 مراقبة حية — اضغط الزر مجددًا للإيقاف");
         appendResult("📊 بدأت المراقبة الحية لسيرفر فري فاير الأسرع…\n(اضغط الزر مرة أخرى للإيقاف)\n\n");
-        monitorThread = new Thread(() -> {
-            NetCore.PingResult best = NetCore.bestServer();
-            String host = (best != null && best.host != null) ? best.host : "ff.garena.com";
-            String nm = (best != null && best.name != null) ? best.name : "Garena";
-            ui.post(() -> appendResult("🎯 المراقبة على: " + nm + " (" + host + ")\n"));
-            int round = 1;
-            double sum = 0; int n = 0; int loss = 0; int rounds = 0;
-            while (monitoring) {
-                NetCore.PingResult r = NetCore.tcpPing("", host, 10000, 3, 3000);
-                rounds++;
-                final String line;
-                if (r.avg >= 0) {
-                    sum += r.avg; n++;
-                    loss += r.loss;
-                    String emoji = r.avg < 60 ? "🟢" : r.avg < 100 ? "🟡" : r.avg < 160 ? "🟠" : "🔴";
-                    line = String.format(Locale.US, "%s [%02d] %5.1f ms | جيتر %4.1f | فقد %d%%",
-                            emoji, round, r.avg, r.jitter, r.loss);
-                } else {
-                    loss += 100;
-                    line = String.format(Locale.US, "🔴 [%02d] انقطاع!", round);
+        monitorThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                NetCore.PingResult best;
+                try { best = NetCore.bestServer(); }
+                catch (Throwable t) { best = null; }
+                String host = (best != null && best.host != null) ? best.host : "ff.garena.com";
+                String nm = (best != null && best.name != null) ? best.name : "Garena";
+                final String fHost = host, fName = nm;
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() { appendResult("🎯 المراقبة على: " + fName + " (" + fHost + ")\n"); }
+                });
+                int round = 1;
+                double sum = 0; int n = 0; int lossSum = 0; int rounds = 0;
+                while (monitoring && !Thread.currentThread().isInterrupted()) {
+                    NetCore.PingResult r;
+                    try { r = NetCore.tcpPing("", host, 10000, 3, 3000); }
+                    catch (Throwable t) { break; }
+                    rounds++;
+                    final String line;
+                    if (r.avg >= 0) {
+                        sum += r.avg; n++;
+                        lossSum += r.loss;
+                        String emoji = r.avg < 60 ? "🟢" : r.avg < 100 ? "🟡" : r.avg < 160 ? "🟠" : "🔴";
+                        line = String.format(Locale.US, "%s [%02d] %5.1f ms | جيتر %4.1f | فقد %d%%",
+                                emoji, round, r.avg, r.jitter, r.loss);
+                    } else {
+                        lossSum += 100;
+                        line = String.format(Locale.US, "🔴 [%02d] انقطاع!", round);
+                    }
+                    ui.post(new Runnable() {
+                        @Override
+                        public void run() { appendResult(line + "\n"); }
+                    });
+                    round++;
+                    try { Thread.sleep(2000); } catch (InterruptedException e) { break; }
                 }
-                ui.post(() -> appendResult(line + "\n"));
-                round++;
-                try { Thread.sleep(2000); } catch (InterruptedException e) { break; }
-            }
-            if (n > 0) {
-                final String summary = String.format(Locale.US,
-                        "\n━━━━━━━━━━━━━━\n📈 الملخص: متوسط %.1f ms | فقد %d%% عبر %d جولة",
-                        sum / n, loss / rounds, rounds);
-                ui.post(() -> appendResult(summary));
+                if (n > 0) {
+                    final double fSum = sum; final int fN = n, fLoss = lossSum, fRounds = rounds;
+                    ui.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            appendResult(String.format(Locale.US,
+                                    "\n━━━━━━━━━━━━━━\n📈 الملخص: متوسط %.1f ms | فقد %d%% عبر %d جولة",
+                                    fSum / fN, fLoss / fRounds, fRounds));
+                        }
+                    });
+                }
             }
         });
         monitorThread.start();
     }
 
     public void onUndo(View v) {
-        if (!rootAvailable) {
-            showNoRootInfo();
-            return;
-        }
+        if (!rootAvailable) { showNoRootInfo(); return; }
         startTask("↩️ جارٍ استرجاع الإعدادات الافتراضية…");
-        worker.execute(() -> {
-            List<String> log = RootCore.undo();
-            lastReport = String.join("\n", log);
-            ui.post(() -> { tvResults.setText(lastReport); toast("تم التراجع ✅"); });
+        worker.execute(new Runnable() {
+            @Override
+            public void run() {
+                List<String> log;
+                try { log = RootCore.undo(); }
+                catch (Throwable t) { log = null; }
+                if (log == null) { log = new ArrayList<String>(); log.add("⛔ خطأ — تأكد من منح صلاحية su للتطبيق."); }
+                final List<String> logF = log;
+                lastReport = joinLines(logF);
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tvResults.setText(lastReport);
+                        toast("تم التراجع ✅");
+                    }
+                });
+            }
         });
     }
 
     public void onCopy(View v) {
-        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        cm.setPrimaryClip(ClipData.newPlainText("FF-TurboNet", lastReport.isEmpty()
-                ? tvResults.getText().toString() : lastReport));
-        toast("تم نسخ النتائج 📋");
+        try {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            String txt = lastReport.isEmpty() ? tvResults.getText().toString() : lastReport;
+            cm.setPrimaryClip(ClipData.newPlainText("FF-TurboNet", txt));
+            toast("تم نسخ النتائج 📋");
+        } catch (Throwable t) {
+            toast("تعذّر النسخ");
+        }
     }
 
     public void onShare(View v) {
-        Intent i = new Intent(Intent.ACTION_SEND);
-        i.setType("text/plain");
-        i.putExtra(Intent.EXTRA_TEXT, (lastReport.isEmpty()
-                ? tvResults.getText().toString() : lastReport)
-                + "\n\n— أُنشئ بواسطة FF TurboNet ⚡ (أداة قانونية 100%)");
-        startActivity(Intent.createChooser(i, "مشاركة النتائج"));
+        try {
+            String txt = (lastReport.isEmpty() ? tvResults.getText().toString() : lastReport)
+                    + "\n\n— أُنشئ بواسطة FF TurboNet ⚡ (أداة قانونية 100%)";
+            Intent i = new Intent(Intent.ACTION_SEND);
+            i.setType("text/plain");
+            i.putExtra(Intent.EXTRA_TEXT, txt);
+            startActivity(Intent.createChooser(i, "مشاركة النتائج"));
+        } catch (Throwable t) {
+            toast("تعذّرت المشاركة");
+        }
     }
 
     /* ============ أدوات مساعدة ============ */
 
+    private static String joinLines(List<String> lines) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < lines.size(); i++) {
+            sb.append(lines.get(i)).append('\n');
+        }
+        return sb.toString();
+    }
+
+    /** آخر خطأ (في حالة فشل الفحص) — يُحفظ في متغير ثابت */
+    private static Throwable lastErr = null;
+
+    private static String t0() {
+        // مساعد صغير: يُرجّع تمثيلًا نصيًا لآخر خطأ مسجّل
+        return lastErr == null ? "غير معروف" : android.util.Log.getStackTraceString(lastErr);
+    }
+
     private void startTask(String msg) {
-        ui.post(() -> { tvResults.setText(msg + "\n…"); tvStatus.setText("⏳ جارٍ العمل…"); });
+        ui.post(new Runnable() {
+            String m;
+            @Override public void run() { tvResults.setText(m + "\n…"); tvStatus.setText("⏳ جارٍ العمل…"); }
+            Runnable set(String msg) { m = msg; return this; }
+        }.set(msg));
     }
 
     private void appendResult(final String s) {
