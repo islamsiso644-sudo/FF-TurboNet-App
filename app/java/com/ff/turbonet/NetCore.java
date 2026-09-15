@@ -7,7 +7,10 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -16,12 +19,12 @@ import java.util.concurrent.TimeUnit;
 /**
  * NetCore — قلب الشبكة: فحص TCP-Ping لسيرفرات فري فاير الحقيقية + قياس DNS يدويًا.
  * 100% قانوني: قراءة فقط، لا يلمس اللعبة إطلاقًا.
+ * ملاحظة توافق: بدون أي لامدات — فئات داخلية مجهولة فقط (متوافق مع كل الأجهزة).
  */
 public final class NetCore {
 
-    /** سيرفرات Garena Free Fire الحقيقية (نفس قائمة الأداة الأصلية) */
+    /** سيرفرات Garena Free Fire الحقيقية */
     public static final String[][] FF_SERVERS = {
-        // {اسم, عنوان, منفذ}
         {"بنغلاديش — Events",  "ff-events.garena.com", "10000"},
         {"بنغلاديش — IP1",     "202.81.97.70",         "10000"},
         {"بنغلاديش — IP2",     "202.81.97.72",         "10000"},
@@ -73,15 +76,13 @@ public final class NetCore {
         }
     }
 
-    /**
-     * TCP-Ping: قياس زمن فتح اتصال TCP مع السيرفر (أدق من ICMP على أندرويد بدون روت).
-     */
+    /** TCP-Ping: قياس زمن فتح اتصال TCP (أدق من ICMP بدون روت) */
     public static PingResult tcpPing(String name, String host, int port, int count, int timeoutMs) {
         PingResult r = new PingResult();
         r.name = name;
         r.host = host;
         r.total = count;
-        List<Double> times = new ArrayList<>();
+        List<Double> times = new ArrayList<Double>();
         for (int i = 0; i < count; i++) {
             long t0 = System.nanoTime();
             Socket s = null;
@@ -89,7 +90,7 @@ public final class NetCore {
                 s = new Socket();
                 s.connect(new InetSocketAddress(host, port), timeoutMs);
                 long t1 = System.nanoTime();
-                times.add((t1 - t0) / 1e6);
+                times.add(Double.valueOf((t1 - t0) / 1e6));
                 r.ok++;
             } catch (Exception ignored) {
             } finally {
@@ -99,14 +100,19 @@ public final class NetCore {
         }
         if (!times.isEmpty()) {
             double sum = 0, mn = Double.MAX_VALUE, mx = Double.MIN_VALUE;
-            for (double t : times) { sum += t; if (t < mn) mn = t; if (t > mx) mx = t; }
+            for (int i = 0; i < times.size(); i++) {
+                double t = times.get(i).doubleValue();
+                sum += t;
+                if (t < mn) mn = t;
+                if (t > mx) mx = t;
+            }
             r.avg = sum / times.size();
             r.min = mn;
             r.max = mx;
-            // الجيتر = متوسط الفرق بين قياسين متتاليين
             double jitSum = 0; int jitN = 0;
             for (int i = 1; i < times.size(); i++) {
-                jitSum += Math.abs(times.get(i) - times.get(i - 1)); jitN++;
+                jitSum += Math.abs(times.get(i).doubleValue() - times.get(i - 1).doubleValue());
+                jitN++;
             }
             if (jitN > 0) r.jitter = jitSum / jitN;
             r.loss = (int) Math.round(100.0 * (count - r.ok) / count);
@@ -114,26 +120,34 @@ public final class NetCore {
         return r;
     }
 
-    /** فحص كل السيرفرات بالتوازي (10 خيوط) وإرجاع النتائج مرتبة حسب الأسرع */
+    /** فحص كل السيرفرات بالتوازي (10 خيوط) وترتيبها حسب الأسرع */
     public static List<PingResult> pingAll() {
         ExecutorService pool = Executors.newFixedThreadPool(10);
-        List<Future<PingResult>> futures = new ArrayList<>();
-        for (String[] srv : FF_SERVERS) {
-            final String nm = srv[0], hs = srv[1];
-            final int pt = Integer.parseInt(srv[2]);
-            futures.add(pool.submit(() -> tcpPing(nm, hs, pt, 4, 3000)));
+        List<Future<PingResult>> futures = new ArrayList<Future<PingResult>>();
+        for (int i = 0; i < FF_SERVERS.length; i++) {
+            final String nm = FF_SERVERS[i][0];
+            final String hs = FF_SERVERS[i][1];
+            final int pt = Integer.parseInt(FF_SERVERS[i][2]);
+            futures.add(pool.submit(new Callable<PingResult>() {
+                @Override
+                public PingResult call() {
+                    return tcpPing(nm, hs, pt, 4, 3000);
+                }
+            }));
         }
-        List<PingResult> out = new ArrayList<>();
-        for (Future<PingResult> f : futures) {
-            try { out.add(f.get(60, TimeUnit.SECONDS)); } catch (Exception ignored) {}
+        List<PingResult> out = new ArrayList<PingResult>();
+        for (int i = 0; i < futures.size(); i++) {
+            try { out.add(futures.get(i).get(60, TimeUnit.SECONDS)); } catch (Exception ignored) {}
         }
         pool.shutdown();
-        // ترتيب: الصالح أولًا ثم الأسرع
-        out.sort((a, b) -> {
-            if (a.avg < 0 && b.avg < 0) return 0;
-            if (a.avg < 0) return 1;
-            if (b.avg < 0) return -1;
-            return Double.compare(a.avg, b.avg);
+        Collections.sort(out, new Comparator<PingResult>() {
+            @Override
+            public int compare(PingResult a, PingResult b) {
+                if (a.avg < 0 && b.avg < 0) return 0;
+                if (a.avg < 0) return 1;
+                if (b.avg < 0) return -1;
+                return Double.compare(a.avg, b.avg);
+            }
         });
         return out;
     }
@@ -145,10 +159,7 @@ public final class NetCore {
         public boolean resolved;
     }
 
-    /**
-     * قياس DNS يدويًا: نبني باكت استعلام UDP ببروتوكول DNS الخام (بدون مكتبات).
-     * نستعلم عن ff.garena.com من كل خادم ونقيس الزمن.
-     */
+    /** قياس DNS يدويًا ببروتوكول DNS خام (بدون مكتبات) */
     public static DnsResult queryDns(String name, String serverIp) {
         DnsResult r = new DnsResult();
         r.name = name;
@@ -157,7 +168,6 @@ public final class NetCore {
         try {
             sock = new DatagramSocket();
             sock.setSoTimeout(2500);
-
             byte[] query = buildDnsQuery("ff.garena.com");
             long t0 = System.nanoTime();
             sock.send(new DatagramPacket(query, query.length,
@@ -180,22 +190,21 @@ public final class NetCore {
     private static byte[] buildDnsQuery(String domain) {
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            // Header: ID عشوائي، RD=1
             int id = (int) (Math.random() * 0xFFFF);
             out.write((id >> 8) & 0xFF);
             out.write(id & 0xFF);
-            out.write(0x01); out.write(0x00);      // flags: recursion desired
-            out.write(0x00); out.write(0x01);      // QDCOUNT=1
-            out.write(0x00); out.write(0x00);      // ANCOUNT
-            out.write(0x00); out.write(0x00);      // NSCOUNT
-            out.write(0x00); out.write(0x00);      // ARCOUNT
-            // QNAME
-            for (String label : domain.split("\\.")) {
-                out.write(label.length());
-                out.write(label.getBytes("US-ASCII"));
+            out.write(0x01); out.write(0x00);
+            out.write(0x00); out.write(0x01);
+            out.write(0x00); out.write(0x00);
+            out.write(0x00); out.write(0x00);
+            out.write(0x00); out.write(0x00);
+            String[] labels = domain.split("\\.");
+            for (int i = 0; i < labels.length; i++) {
+                byte[] lb = labels[i].getBytes("US-ASCII");
+                out.write(lb.length);
+                out.write(lb);
             }
             out.write(0x00);
-            // QTYPE=A, QCLASS=IN
             out.write(0x00); out.write(0x01);
             out.write(0x00); out.write(0x01);
             return out.toByteArray();
@@ -207,27 +216,33 @@ public final class NetCore {
     /** فحص كل خوادم DNS بالتوازي وترتيبها حسب الأسرع */
     public static List<DnsResult> dnsAll() {
         ExecutorService pool = Executors.newFixedThreadPool(6);
-        List<Future<DnsResult>> futures = new ArrayList<>();
-        for (String[] d : DNS_CANDIDATES) {
-            final String nm = d[0], ip = d[1];
-            futures.add(pool.submit(() -> {
-                // أفضل قياس من محاولتين
-                DnsResult a = queryDns(nm, ip);
-                DnsResult b = queryDns(nm, ip);
-                if (a.resolved && b.resolved) return (a.ms <= b.ms) ? a : b;
-                return a.resolved ? a : b;
+        List<Future<DnsResult>> futures = new ArrayList<Future<DnsResult>>();
+        for (int i = 0; i < DNS_CANDIDATES.length; i++) {
+            final String nm = DNS_CANDIDATES[i][0];
+            final String ip = DNS_CANDIDATES[i][1];
+            futures.add(pool.submit(new Callable<DnsResult>() {
+                @Override
+                public DnsResult call() {
+                    DnsResult a = queryDns(nm, ip);
+                    DnsResult b = queryDns(nm, ip);
+                    if (a.resolved && b.resolved) return (a.ms <= b.ms) ? a : b;
+                    return a.resolved ? a : b;
+                }
             }));
         }
-        List<DnsResult> out = new ArrayList<>();
-        for (Future<DnsResult> f : futures) {
-            try { out.add(f.get(10, TimeUnit.SECONDS)); } catch (Exception ignored) {}
+        List<DnsResult> out = new ArrayList<DnsResult>();
+        for (int i = 0; i < futures.size(); i++) {
+            try { out.add(futures.get(i).get(10, TimeUnit.SECONDS)); } catch (Exception ignored) {}
         }
         pool.shutdown();
-        out.sort((a, b) -> {
-            if (!a.resolved && !b.resolved) return 0;
-            if (!a.resolved) return 1;
-            if (!b.resolved) return -1;
-            return Double.compare(a.ms, b.ms);
+        Collections.sort(out, new Comparator<DnsResult>() {
+            @Override
+            public int compare(DnsResult a, DnsResult b) {
+                if (!a.resolved && !b.resolved) return 0;
+                if (!a.resolved) return 1;
+                if (!b.resolved) return -1;
+                return Double.compare(a.ms, b.ms);
+            }
         });
         return out;
     }
@@ -235,7 +250,9 @@ public final class NetCore {
     /** أفضل سيرفر (الأسرع صالح) */
     public static PingResult bestServer() {
         List<PingResult> all = pingAll();
-        for (PingResult p : all) if (p.avg > 0) return p;
+        for (int i = 0; i < all.size(); i++) {
+            if (all.get(i).avg > 0) return all.get(i);
+        }
         return all.isEmpty() ? new PingResult() : all.get(0);
     }
 }
