@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FF TurboNet</string>
+    <string name="title">⚡ FF TurboNet</string>
+    <string name="subtitle">محسّن الشبكة القانوني لـ Free Fire</string>
+    <string name="btn_ping">📡 فحص البينق</string>
+    <string name="btn_dns">🌐 اختبار DNS</string>
+    <string name="btn_tune">🚀 تحسينات TCP</string>
+    <string name="btn_game">🎮 وضع اللعب</string>
+    <string name="btn_monitor">📊 مراقبة حية</string>
+    <string name="btn_undo">↩️ تراجع Undo</string>
+    <string name="btn_copy">📋 نسخ النتائج</string>
+    <string name="btn_share">📤 مشاركة</string>
+    <string name="checking">جارٍ الفحص…</string>
+    <string name="disclaimer">⚠️ أداة قانونية 100% — لا تعدّل ملفات اللعبة ولا الذاكرة ولا الباكتات، فقط إعدادات نظام الجهاز (TCP/DNS/الخلفية). لا يوجد أي سبب للحظر.</string>
+    <string name="legal_note">✔ متوافق مع قواعد Garena للعب النظيف</string>
+</resources>
