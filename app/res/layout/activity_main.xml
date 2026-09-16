@@ -173,6 +173,102 @@
                 android:onClick="onShare" />
         </LinearLayout>
 
+        <!-- تحسين بدون روت -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/btnNoRoot"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/btn_accent"
+                android:text="🔧 تحسين بدون روت"
+                android:textColor="#0D1117"
+                android:textSize="13sp"
+                android:onClick="onNoRoot" />
+
+            <Button
+                android:id="@+id/btnGuide"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/btn_bg"
+                android:text="📖 دليل اللعبة"
+                android:textColor="@color/text_main"
+                android:textSize="13sp"
+                android:onClick="onGameGuide" />
+        </LinearLayout>
+
+        <!-- إجراءات سريعة بدون روت -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/btnPrivateDns"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/btn_bg"
+                android:text="🌐 Private DNS"
+                android:textColor="@color/text_main"
+                android:textSize="12sp"
+                android:onClick="onPrivateDns" />
+
+            <Button
+                android:id="@+id/btnWifi"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/btn_bg"
+                android:text="📶 إعدادات Wi-Fi"
+                android:textColor="@color/text_main"
+                android:textSize="12sp"
+                android:onClick="onWifi" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="10dp">
+
+            <Button
+                android:id="@+id/btnBattery"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/btn_bg"
+                android:text="🔋 استثناء البطارية"
+                android:textColor="@color/text_main"
+                android:textSize="12sp"
+                android:onClick="onBattery" />
+
+            <Button
+                android:id="@+id/btnBgData"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/btn_bg"
+                android:text="🚫 بيانات الخلفية"
+                android:textColor="@color/text_main"
+                android:textSize="12sp"
+                android:onClick="onBgData" />
+        </LinearLayout>
+
         <!-- منطقة النتائج -->
         <TextView
             android:layout_width="wrap_content"
