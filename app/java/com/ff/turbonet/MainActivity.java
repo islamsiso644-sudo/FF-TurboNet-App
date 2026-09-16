@@ -118,7 +118,7 @@ public class MainActivity extends Activity {
                         sb.append("💡 منطقة ").append(region(best.host)).append(" هي الأفضل لجهازك.\n");
                         if (best.avg < 60) sb.append("🟢 بينق ممتاز — جاهز للعب!\n");
                         else if (best.avg < 100) sb.append("🟡 بينق جيد.\n");
-                        else sb.append("🟠 جرّب تغيير DNS من زر DNS، وتأكد من قوة الواي فاي.\n");
+                        else sb.append("🟠 جرّب تغيير DNS من زر DNS، وتأكد من قوة إشارة بيانات الجوال.\n");
                     }
                 }
                 lastReport = sb.toString();
@@ -166,10 +166,9 @@ public class MainActivity extends Activity {
                         sb.append("🏆 أسرع DNS: ").append(fastest.name)
                           .append(" (").append(fastest.ip).append(")\n\n");
                         sb.append("💡 لتغيير DNS على جهازك (بدون روت):\n");
-                        sb.append("   الإعدادات ← الشبكة ← Wi-Fi ← اضغط مطولًا على شبكتك\n");
-                        sb.append("   ← تعديل ← خيارات متقدمة ← IP: ثابت\n");
-                        sb.append("   ← DNS 1: ").append(fastest.ip).append("\n");
-                        sb.append("   ← DNS 2: 1.0.0.1\n\n");
+                        sb.append("   الأفضل: استخدم زر 🌐 Private DNS واكتب: dns.google\n");
+                        sb.append("   (يعمل على بيانات الجوال والواي فاي معًا)\n");
+                        sb.append("   أو من زر 📡 APN لضبط بيانات الجوال\n\n");
                     }
                 }
                 lastReport = sb.toString();
@@ -351,10 +350,11 @@ public class MainActivity extends Activity {
         sb.append("   اضغط زر 🌐 Private DNS بالأعلى ← سيفتح الإعداد\n");
         sb.append("   اختر \"اسم مضيف خاص\" واكتب:  dns.google\n");
         sb.append("   (أو 1dot1dot1dot1.cloudflare-dns.com)\n\n");
-        sb.append("2️⃣ DNS ثابت للواي فاي:\n");
-        sb.append("   اضغط زر 📶 إعدادات Wi-Fi ← اضغط مطولًا على شبكتك\n");
-        sb.append("   ← تعديل ← خيارات متقدمة ← IP: ثابت\n");
-        sb.append("   ← DNS 1: 1.1.1.1   DNS 2: 1.0.0.1\n\n");
+        sb.append("2️⃣ تحسين بيانات الجوال (APN):\n");
+        sb.append("   اضغط زر 📡 APN ← اضبط بروتوكول APN على IPv4/IPv6\n");
+        sb.append("   ونوع APN على: default,supl\n\n");
+        sb.append("2️⃣ تثبيت وضع الشبكة 4G/LTE:\n");
+        sb.append("   اضغط زر 📶 وضع الشبكة ← اختر LTE/4G فقط\n\n");
         sb.append("3️⃣ استثناء البطارية (يمنع النظام من تقييد الشبكة):\n");
         sb.append("   اضغط زر 🔋 استثناء البطارية ← اختر \"غير مقيّد\"\n\n");
         sb.append("4️⃣ تقييد بيانات الخلفية لفري فاير:\n");
@@ -402,23 +402,59 @@ public class MainActivity extends Activity {
         tvResults.setText(lastReport);
     }
 
-    public void onWifi(View v) {
+    public void onMobileData(View v) {
+        boolean opened = false;
         try {
-            startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS));
-        } catch (Throwable t) {
-            try { startActivity(new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)); } catch (Throwable t2) {}
+            Intent i = new Intent(android.provider.Settings.ACTION_APN_SETTINGS);
+            startActivity(i);
+            opened = true;
+        } catch (Throwable t) {}
+        if (!opened) {
+            try {
+                Intent i = new Intent(android.provider.Settings.ACTION_DATA_ROAMING_SETTINGS);
+                startActivity(i);
+                opened = true;
+            } catch (Throwable t) {}
+        }
+        if (!opened) {
+            try { startActivity(new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)); } catch (Throwable t) {}
         }
         StringBuilder sb = new StringBuilder();
-        sb.append("📶 ضبط DNS ثابت للواي فاي\n\n");
-        sb.append("1. اضغط مطولًا على اسم شبكتك المتصلة\n");
-        sb.append("2. اختر \"تعديل الشبكة\" أو \"إدارة إعدادات الشبكة\"\n");
-        sb.append("3. افتح \"خيارات متقدمة\"\n");
-        sb.append("4. غيّر \"إعدادات IP\" من DHCP إلى \"ثابت\"\n");
-        sb.append("5. في خانة DNS 1 اكتب:  1.1.1.1\n");
-        sb.append("   وفي DNS 2 اكتب:  1.0.0.1\n");
-        sb.append("6. احفظ\n\n");
-        sb.append("💡 هذا يقلل زمن تحليل أسماء سيرفرات اللعبة.\n");
-        sb.append("⚠️ احفظ إعداداتك القديمة قبل التغيير للرجوع عند الحاجة.\n");
+        sb.append("\ud83d\udce1 \u062a\u062d\u0633\u064a\u0646 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062c\u0648\u0627\u0644 (APN) \u2014 \u0628\u062f\u0648\u0646 \u0631\u0648\u062a\n\n");
+        sb.append("\u0623\u0646\u062a \u062a\u0633\u062a\u062e\u062f\u0645 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062c\u0648\u0627\u0644\u060c \u0648\u0647\u0630\u0627 \u0647\u0648 \u0627\u0644\u062a\u062d\u0633\u064a\u0646 \u0627\u0644\u0645\u0646\u0627\u0633\u0628 \u0644\u0643:\n\n");
+        sb.append("1. \u0633\u062a\u064f\u0641\u062a\u062d \u0635\u0641\u062d\u0629 \"\u0623\u0633\u0645\u0627\u0621 \u0646\u0642\u0627\u0637 \u0627\u0644\u0648\u0635\u0648\u0644 (APN)\"\n");
+        sb.append("2. \u0627\u0636\u063a\u0637 \u0639\u0644\u0649 \u0646\u0642\u0637\u0629 \u0627\u0644\u0648\u0635\u0648\u0644 \u0627\u0644\u0646\u0634\u0637\u0629 (\u0627\u0644\u0645\u064f\u0639\u0644\u0651\u0645\u0629 \u0628\u062f\u0627\u0626\u0631\u0629)\n");
+        sb.append("3. \u0627\u0628\u062d\u062b \u0639\u0646 \"\u0646\u0648\u0639 APN\" \u0648\u062a\u0623\u0643\u062f \u0623\u0646\u0647 \u064a\u062d\u062a\u0648\u064a: default,supl\n");
+        sb.append("4. \u0627\u0628\u062d\u062b \u0639\u0646 \"\u0628\u0631\u0648\u062a\u0648\u0643\u0648\u0644 APN\" \u0648\u0627\u062e\u062a\u0631: IPv4/IPv6\n");
+        sb.append("5. \u0627\u0628\u062d\u062b \u0639\u0646 \"\u0628\u0631\u0648\u062a\u0648\u0643\u0648\u0644 APN \u0644\u0644\u0631\u0648\u0645\u064a\u0646\u063a\" \u0648\u0627\u062e\u062a\u0631: IPv4/IPv6\n");
+        sb.append("6. \u0627\u062d\u0641\u0638 \u0645\u0646 \u0627\u0644\u0642\u0627\u0626\u0645\u0629 (\u22ee \u2190 \u062d\u0641\u0638)\n\n");
+        sb.append("\ud83d\udca1 \u0627\u0644\u0641\u0627\u0626\u062f\u0629: \u064a\u0645\u0646\u0639 \u062a\u0623\u062e\u0651\u0631 \u062a\u062d\u0648\u064a\u0644 \u0627\u0644\u0623\u0633\u0645\u0627\u0621 \u0639\u0644\u0649 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062c\u0648\u0627\u0644\n");
+        sb.append("   \u0648\u064a\u062b\u0628\u0651\u062a \u0627\u0644\u0627\u062a\u0635\u0627\u0644 \u0628\u0633\u064a\u0631\u0641\u0631\u0627\u062a \u0641\u0631\u064a \u0641\u0627\u064a\u0631.\n");
+        sb.append("\u26a0\ufe0f \u0644\u0627 \u062a\u063a\u064a\u0651\u0631 \u0623\u064a \u062e\u0627\u0646\u0629 \u0644\u0627 \u062a\u0639\u0631\u0641\u0647\u0627. \u0644\u0648 \u062d\u062f\u062b\u062a \u0645\u0634\u0643\u0644\u0629:\n");
+        sb.append("   \u22ee \u2190 \"\u0625\u0639\u0627\u062f\u0629 \u062a\u0639\u064a\u064a\u0646 \u0625\u0644\u0649 \u0627\u0644\u0627\u0641\u062a\u0631\u0627\u0636\u064a\".\n");
+        lastReport = sb.toString();
+        tvResults.setText(lastReport);
+    }
+
+    public void onNetworkMode(View v) {
+        boolean opened = false;
+        try {
+            Intent i = new Intent(android.provider.Settings.ACTION_NETWORK_OPERATOR_SETTINGS);
+            startActivity(i);
+            opened = true;
+        } catch (Throwable t) {}
+        if (!opened) {
+            try { startActivity(new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)); } catch (Throwable t) {}
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("\ud83d\udcf6 \u062a\u062b\u0628\u064a\u062a \u0648\u0636\u0639 \u0627\u0644\u0634\u0628\u0643\u0629 (4G/LTE) \u2014 \u0628\u062f\u0648\u0646 \u0631\u0648\u062a\n\n");
+        sb.append("1. \u0633\u062a\u064f\u0641\u062a\u062d \u0635\u0641\u062d\u0629 \"\u0634\u0628\u0643\u0629 \u0627\u0644\u062c\u0648\u0627\u0644\" \u0623\u0648 \"\u0645\u0634\u063a\u0651\u0644 \u0627\u0644\u0634\u0628\u0643\u0629\"\n");
+        sb.append("2. \u0627\u0641\u062a\u062d \"\u0648\u0636\u0639 \u0627\u0644\u0634\u0628\u0643\u0629 \u0627\u0644\u0645\u0641\u0636\u0651\u0644\" (Preferred network type)\n");
+        sb.append("3. \u0627\u062e\u062a\u0631: LTE / 4G \u0641\u0642\u0637  (\u0623\u0648 LTE/3G/2G \u062a\u0644\u0642\u0627\u0626\u064a)\n");
+        sb.append("4. \u062a\u062c\u0646\u0651\u0628 \"3G \u0641\u0642\u0637\" \u0623\u0648 \"2G \u0641\u0642\u0637\" \u2014 \u0641\u0647\u064a \u062a\u0633\u0628\u0628 \u0644\u0627\u0642\u0627\u064b \u0634\u062f\u064a\u062f\u0627\u064b\n\n");
+        sb.append("\ud83d\udca1 \u0627\u0644\u0641\u0627\u0626\u062f\u0629: \u062a\u062b\u0628\u064a\u062a 4G \u064a\u0645\u0646\u0639 \u0627\u0644\u0647\u0627\u062a\u0641 \u0645\u0646 \u0627\u0644\u062a\u0646\u0642\u0644 \u0628\u064a\u0646 \u0627\u0644\u0623\u062c\u064a\u0627\u0644\n");
+        sb.append("   \u0623\u062b\u0646\u0627\u0621 \u0627\u0644\u0644\u0639\u0628 (\u0648\u0647\u0648 \u0633\u0628\u0628 \u0634\u0627\u0626\u0639 \u0644\u0644\u0642\u0641\u0632\u0627\u062a \u0627\u0644\u0645\u0641\u0627\u062c\u0626\u0629 \u0641\u064a \u0627\u0644\u0628\u064a\u0646\u0642).\n");
+        sb.append("\u26a0\ufe0f \u0644\u0648 \u0636\u0639\u0641\u062a \u0627\u0644\u0625\u0634\u0627\u0631\u0629\u060c \u0627\u0631\u062c\u0639 \u0625\u0644\u0649 \"\u062a\u0644\u0642\u0627\u0626\u064a\".\n");
         lastReport = sb.toString();
         tvResults.setText(lastReport);
     }
@@ -476,8 +512,10 @@ public class MainActivity extends Activity {
         sb.append("  • معدل الإطارات: \"عالي\" فقط لو جهازك قوي\n");
         sb.append("  • أوقف: الظلال، التأثيرات، الجودة العالية\n");
         sb.append("  • أوقف \"الرسومات عالية الدقة\"\n\n");
-        sb.append("📶 الشبكة:\n");
-        sb.append("  • استخدم 5GHz لو قريب من الراوتر، 2.4GHz لو بعيد\n");
+        sb.append("📡 بيانات الجوال (بدل الواي فاي):\n");
+        sb.append("  • ثبّت وضع الشبكة على LTE/4G (زر 📶 وضع الشبكة)\n");
+        sb.append("  • لا تلعب في مكان ضعيف الإشارة — الإشارة أهم من السرعة\n");
+        sb.append("  • أوقف الواي فاي تمامًا حتى لا يتنقل الهاتف بينه وبين البيانات\n");
         sb.append("  • لا تلعب والجهاز يشحن (يسخّن ويبطئ)\n");
         sb.append("  • أوقف التحميلات والتحديثات التلقائية\n\n");
         sb.append("📱 الجهاز:\n");
@@ -538,7 +576,7 @@ public class MainActivity extends Activity {
         sb.append("  2️⃣ أذونات ADB من الكمبيوتر (شبه-روت)\n\n");
         sb.append("💡 نصائح فورية بدون أي شيء:\n");
         sb.append("  • أغلق التطبيقات من قائمة المهام قبل اللعب\n");
-        sb.append("  • اقترب من الراوتر أو استخدم 5GHz\n");
+        sb.append("  • اقترب من نافذة أو مكان مفتوح لتحسين إشارة بيانات الجوال\n");
         sb.append("  • أوقف التحميلات والتحديثات التلقائية\n");
         sb.append("  • شغّل \"وضع عدم الإزعاج\" لمنع الإشعارات\n");
         sb.append("  • ثبّت الشبكة على 2.4GHz إذا كنت بعيدًا\n");
