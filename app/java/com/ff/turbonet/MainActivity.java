@@ -342,6 +342,154 @@ public class MainActivity extends Activity {
         }
     }
 
+    /* ============ أزرار التحسين بدون روت ============ */
+
+    public void onNoRoot(View v) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("🔧 التحسين الحقيقي بدون روت — اتبع بالترتيب:\n\n");
+        sb.append("1️⃣ Private DNS (الأهم — يسرّع تحليل سيرفرات اللعبة):\n");
+        sb.append("   اضغط زر 🌐 Private DNS بالأعلى ← سيفتح الإعداد\n");
+        sb.append("   اختر \"اسم مضيف خاص\" واكتب:  dns.google\n");
+        sb.append("   (أو 1dot1dot1dot1.cloudflare-dns.com)\n\n");
+        sb.append("2️⃣ DNS ثابت للواي فاي:\n");
+        sb.append("   اضغط زر 📶 إعدادات Wi-Fi ← اضغط مطولًا على شبكتك\n");
+        sb.append("   ← تعديل ← خيارات متقدمة ← IP: ثابت\n");
+        sb.append("   ← DNS 1: 1.1.1.1   DNS 2: 1.0.0.1\n\n");
+        sb.append("3️⃣ استثناء البطارية (يمنع النظام من تقييد الشبكة):\n");
+        sb.append("   اضغط زر 🔋 استثناء البطارية ← اختر \"غير مقيّد\"\n\n");
+        sb.append("4️⃣ تقييد بيانات الخلفية لفري فاير:\n");
+        sb.append("   اضغط زر 🚫 بيانات الخلفية ← أوقف \"بيانات الخلفية\"\n\n");
+        sb.append("5️⃣ قبل اللعب: أغلق كل التطبيقات من قائمة المهام\n\n");
+        sb.append("✅ هذه التحسينات حقيقية وتعمل بدون روت وبدون حاسوب.\n");
+        sb.append("💡 الأهم هو Private DNS — جرّبه أولًا وقس الفرق بزر 📡 فحص البينق.\n");
+        lastReport = sb.toString();
+        tvResults.setText(lastReport);
+    }
+
+    public void onPrivateDns(View v) {
+        try {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            cm.setPrimaryClip(ClipData.newPlainText("dns", "dns.google"));
+            toast("نُسخ: dns.google — الصقه في خانة اسم المضيف");
+        } catch (Throwable t) {}
+        boolean opened = false;
+        try {
+            Intent i = new Intent("android.settings.PRIVATE_DNS_SETTINGS");
+            startActivity(i);
+            opened = true;
+        } catch (Throwable t) {}
+        if (!opened) {
+            try {
+                Intent i = new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS);
+                startActivity(i);
+                opened = true;
+            } catch (Throwable t) {}
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("🌐 Private DNS — أهم تحسين بدون روت\n\n");
+        sb.append("الخطوات:\n");
+        sb.append("1. اختر \"اسم مضيف خاص\" (Private DNS provider hostname)\n");
+        sb.append("2. اكتب:  dns.google\n");
+        sb.append("   (نسخته لك تلقائيًا — الصقها)\n");
+        sb.append("3. اضغط حفظ\n\n");
+        sb.append("بدائل سريعة:\n");
+        sb.append("  • dns.google  (Google — الأسرع غالبًا)\n");
+        sb.append("  • 1dot1dot1dot1.cloudflare-dns.com  (Cloudflare)\n");
+        sb.append("  • dns.quad9.net  (Quad9)\n\n");
+        sb.append("💡 بعد التطبيق: أعد فحص البينق بزر 📡 وقارن.\n");
+        sb.append("⚠️ لو توقّف الإنترنت، ارجع لـ\"تلقائي\".\n");
+        lastReport = sb.toString();
+        tvResults.setText(lastReport);
+    }
+
+    public void onWifi(View v) {
+        try {
+            startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS));
+        } catch (Throwable t) {
+            try { startActivity(new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)); } catch (Throwable t2) {}
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("📶 ضبط DNS ثابت للواي فاي\n\n");
+        sb.append("1. اضغط مطولًا على اسم شبكتك المتصلة\n");
+        sb.append("2. اختر \"تعديل الشبكة\" أو \"إدارة إعدادات الشبكة\"\n");
+        sb.append("3. افتح \"خيارات متقدمة\"\n");
+        sb.append("4. غيّر \"إعدادات IP\" من DHCP إلى \"ثابت\"\n");
+        sb.append("5. في خانة DNS 1 اكتب:  1.1.1.1\n");
+        sb.append("   وفي DNS 2 اكتب:  1.0.0.1\n");
+        sb.append("6. احفظ\n\n");
+        sb.append("💡 هذا يقلل زمن تحليل أسماء سيرفرات اللعبة.\n");
+        sb.append("⚠️ احفظ إعداداتك القديمة قبل التغيير للرجوع عند الحاجة.\n");
+        lastReport = sb.toString();
+        tvResults.setText(lastReport);
+    }
+
+    public void onBattery(View v) {
+        boolean opened = false;
+        try {
+            Intent i = new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+            startActivity(i);
+            opened = true;
+        } catch (Throwable t) {}
+        if (!opened) {
+            try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); } catch (Throwable t) {}
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("🔋 استثناء البطارية\n\n");
+        sb.append("الخطوات:\n");
+        sb.append("1. اضغط \"غير مقيّد\" أو \"عدم التحسين\"\n");
+        sb.append("2. ابحث عن FF TurboNet وفري فاير وفعّلهما\n\n");
+        sb.append("💡 يمنع النظام من تقييد الشبكة أثناء اللعب\n");
+        sb.append("   (يقلل القفزات المفاجئة في البينق).\n");
+        lastReport = sb.toString();
+        tvResults.setText(lastReport);
+    }
+
+    public void onBgData(View v) {
+        boolean opened = false;
+        try {
+            Intent i = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            i.setData(android.net.Uri.parse("package:com.dts.freefireth"));
+            startActivity(i);
+            opened = true;
+        } catch (Throwable t) {}
+        if (!opened) {
+            try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); } catch (Throwable t) {}
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("🚫 تقييد بيانات الخلفية لفري فاير\n\n");
+        sb.append("الخطوات:\n");
+        sb.append("1. في صفحة التطبيق ← \"البيانات\" أو \"استخدام البيانات\"\n");
+        sb.append("2. أوقف \"بيانات الخلفية\" (Background data)\n\n");
+        sb.append("💡 يمنع اللعبة من استهلاك الشبكة في الخلفية\n");
+        sb.append("   ويجعل الاتصال أثناء اللعب أكثر ثباتًا.\n");
+        sb.append("⚠️ لو لم تُفتح صفحة اللعبة، افتحها يدويًا من:\n");
+        sb.append("   الإعدادات ← التطبيقات ← فري فاير ← البيانات.\n");
+        lastReport = sb.toString();
+        tvResults.setText(lastReport);
+    }
+
+    public void onGameGuide(View v) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("📖 دليل تقليل اللاق داخل فري فاير\n\n");
+        sb.append("⚙️ إعدادات اللعبة:\n");
+        sb.append("  • الرسومات: \"سلس\" (Smooth) — أهم إعداد للاق\n");
+        sb.append("  • معدل الإطارات: \"عالي\" فقط لو جهازك قوي\n");
+        sb.append("  • أوقف: الظلال، التأثيرات، الجودة العالية\n");
+        sb.append("  • أوقف \"الرسومات عالية الدقة\"\n\n");
+        sb.append("📶 الشبكة:\n");
+        sb.append("  • استخدم 5GHz لو قريب من الراوتر، 2.4GHz لو بعيد\n");
+        sb.append("  • لا تلعب والجهاز يشحن (يسخّن ويبطئ)\n");
+        sb.append("  • أوقف التحميلات والتحديثات التلقائية\n\n");
+        sb.append("📱 الجهاز:\n");
+        sb.append("  • أغلق كل التطبيقات من قائمة المهام\n");
+        sb.append("  • شغّل \"وضع عدم الإزعاج\"\n");
+        sb.append("  • فرّغ مساحة (10%+ حرة)\n");
+        sb.append("  • أعد تشغيل الهاتف قبل جلسة لعب طويلة\n\n");
+        sb.append("✅ كل هذه إعدادات مشروعة 100% ولا علاقة لها بالحظر.\n");
+        lastReport = sb.toString();
+        tvResults.setText(lastReport);
+    }
+
     /* ============ أدوات مساعدة ============ */
 
     private static String joinLines(List<String> lines) {
