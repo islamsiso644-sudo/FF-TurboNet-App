@@ -225,16 +225,16 @@
                 android:onClick="onPrivateDns" />
 
             <Button
-                android:id="@+id/btnWifi"
+                android:id="@+id/btnMobileData"
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
                 android:layout_marginStart="4dp"
                 android:background="@drawable/btn_bg"
-                android:text="📶 إعدادات Wi-Fi"
+                android:text="📡 بيانات الجوال APN"
                 android:textColor="@color/text_main"
                 android:textSize="12sp"
-                android:onClick="onWifi" />
+                android:onClick="onMobileData" />
         </LinearLayout>
 
         <LinearLayout
@@ -267,6 +267,25 @@
                 android:textColor="@color/text_main"
                 android:textSize="12sp"
                 android:onClick="onBgData" />
+        </LinearLayout>
+
+        <!-- وضع الشبكة (4G/LTE) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="10dp">
+
+            <Button
+                android:id="@+id/btnNetworkMode"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/btn_accent"
+                android:text="📶 تثبيت وضع الشبكة 4G/LTE"
+                android:textColor="#0D1117"
+                android:textSize="13sp"
+                android:onClick="onNetworkMode" />
         </LinearLayout>
 
         <!-- منطقة النتائج -->
