@@ -26,8 +26,8 @@ echo "── [3/6] aapt2 link — ربط الموارد بالمانيفست"
     --java "$BUILD/gen" \
     --min-sdk-version 24 \
     --target-sdk-version 34 \
-    --version-code 1 \
-    --version-name "1.0" \
+    --version-code 3 \
+    --version-name "1.2" \
     "$BUILD/compiled/res.zip"
 
 echo "── [4/6] javac — ترجمة Java"
